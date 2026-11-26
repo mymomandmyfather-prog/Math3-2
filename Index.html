@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="th"><head><meta charset="utf-8"><base target="_top">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+:root{--blue:#5269b4;--pale:#eef2ff;--ink:#26324a}*{box-sizing:border-box}
+body{margin:0;background:#f5f7fc;color:var(--ink);font:16px system-ui,'Noto Sans Thai',sans-serif}
+header{background:linear-gradient(120deg,#5269b4,#8496d5);color:white;padding:22px 16px;text-align:center}
+main{max-width:850px;margin:18px auto;padding:0 12px}.card{background:white;border-radius:18px;padding:18px;margin:14px 0;box-shadow:0 4px 18px #26324a12}
+h1{font-size:23px;margin:0}h2{font-size:19px;margin:0 0 12px}.tabs{display:flex;gap:8px;margin-bottom:14px}
+button{border:0;border-radius:10px;padding:11px 15px;background:var(--blue);color:white;font-size:15px;cursor:pointer}
+button.secondary{background:#e8ecf8;color:#35446f}input,select{width:100%;padding:11px;border:1px solid #ccd3e3;border-radius:10px;font:inherit;margin:5px 0 12px}
+label{font-size:14px;font-weight:600}.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+table{width:100%;border-collapse:collapse;font-size:14px}th,td{padding:9px;border-bottom:1px solid #e7eaf2;text-align:left}
+.notice{padding:10px;border-radius:10px;background:#edf3ff;margin-top:10px;white-space:pre-wrap}.hidden{display:none}.score{font-weight:700;color:#5269b4}
+@media(max-width:560px){.grid{grid-template-columns:1fr}table{font-size:12px}th,td{padding:6px}}
+</style></head>
+<body><header><h1>Math3-2 · ระบบเช็กคะแนน</h1><div>คะแนนคณิตศาสตร์ | Student Score Portal</div></header>
+<main><div class="tabs"><button onclick="show('student')">นักเรียนเช็กคะแนน</button><button class="secondary" onclick="show('teacher')">ครูจัดการคะแนน</button></div>
+<section id="student" class="card"><h2>🔎 ตรวจสอบคะแนนของฉัน</h2>
+<label>รหัสนักเรียน</label><input id="sid" placeholder="รหัสนักเรียน">
+<label>PIN ส่วนตัว 4–8 หลัก</label><input id="spin" type="password" inputmode="numeric" maxlength="8" placeholder="PIN">
+<button onclick="studentLogin()">แสดงคะแนน</button><div id="studentMsg" class="notice hidden"></div><div id="result"></div></section>
+<section id="teacher" class="card hidden"><h2>🧑‍🏫 หน้าครู</h2><label>รหัสผ่านครู</label><input id="admin" type="password" placeholder="รหัสผ่านที่ตั้งไว้ใน Script Properties">
+<button onclick="loadTeacher()">เข้าสู่ระบบ / โหลดรายการ</button><div id="teacherMsg" class="notice hidden"></div>
+<div id="editor" class="hidden"><h2 style="margin-top:18px">เพิ่มหรือแก้ไขคะแนน</h2>
+<div class="grid"><div><label>รหัสนักเรียน</label><input id="tid"></div><div><label>ชื่อนักเรียน</label><input id="tname"></div>
+<div><label>ชั้น/ห้อง</label><input id="tclass" placeholder="ม.3/2"></div><div><label>PIN นักเรียน (4–8 หลัก)</label><input id="tpin" inputmode="numeric"></div>
+<div><label>รายการคะแนน</label><input id="task" placeholder="สอบเก็บคะแนนครั้งที่ 1"></div><div><label>คะแนนที่ได้</label><input id="tscore" type="number" min="0" step="any" placeholder="เว้นว่างถ้ายังไม่ตรวจ"></div>
+<div><label>คะแนนเต็ม</label><input id="tmax" type="number" min="1" value="20"></div><div><label>หมายเหตุ</label><input id="tnote"></div></div>
+<button onclick="saveScore()">บันทึกข้อมูล</button><button class="secondary" onclick="clearForm()">ล้างแบบฟอร์ม</button>
+<h2 style="margin-top:18px">รายการคะแนนที่บันทึก</h2><div id="list"></div></div></section>
+<div class="notice">คำแนะนำ: ใช้ข้อมูลทดลองก่อนนำคะแนนจริงเข้าระบบ และห้ามเผยแพร่ PIN หรือคะแนนรายบุคคลใน GitHub</div></main>
+<script>
+function show(id){document.getElementById('student').classList.toggle('hidden',id!=='student');document.getElementById('teacher').classList.toggle('hidden',id!=='teacher')}
+function msg(id,text){let e=document.getElementById(id);e.textContent=text;e.classList.remove('hidden')}
+function studentLogin(){document.getElementById('result').innerHTML='';msg('studentMsg','กำลังตรวจสอบ…');google.script.run.withSuccessHandler(d=>{
+let html='<h2>คะแนนของ '+esc(d.name)+' ('+esc(d.klass)+')</h2><table><tr><th>รายการ</th><th>คะแนน</th><th>หมายเหตุ</th></tr>';
+let total=0,max=0;d.scores.forEach(s=>{let sc=Number(s.score);let mx=Number(s.max);if(s.score!==''&&Number.isFinite(sc))total+=sc;if(Number.isFinite(mx))max+=mx;html+='<tr><td>'+esc(s.assessment)+'</td><td class="score">'+(s.score===''?'รอตรวจ':esc(s.score)+' / '+esc(s.max))+'</td><td>'+esc(s.note)+'</td></tr>'});
+html+='</table><p><b>รวมคะแนนที่ประกาศ: '+total+' / '+max+'</b></p>';document.getElementById('result').innerHTML=html;msg('studentMsg','พบข้อมูลแล้ว');
+}).withFailureHandler(e=>msg('studentMsg',e.message||'เกิดข้อผิดพลาด')).studentCheck(document.getElementById('sid').value,document.getElementById('spin').value)}
+function loadTeacher(){msg('teacherMsg','กำลังโหลด…');google.script.run.withSuccessHandler(rows=>{window.rows=rows;document.getElementById('editor').classList.remove('hidden');renderRows();msg('teacherMsg','เข้าสู่ระบบสำเร็จ')}).withFailureHandler(e=>msg('teacherMsg',e.message)).teacherGet(document.getElementById('admin').value)}
+function saveScore(){let d={id:tid.value,name:tname.value,klass:tclass.value,pin:tpin.value,assessment:task.value,score:tscore.value,max:tmax.value,note:tnote.value};
+google.script.run.withSuccessHandler(t=>{msg('teacherMsg',t);loadTeacher();clearForm()}).withFailureHandler(e=>msg('teacherMsg',e.message)).teacherSave(admin.value,d)}
+function renderRows(){let html='<table><tr><th>รหัส/ชื่อ</th><th>รายการ</th><th>คะแนน</th></tr>';(window.rows||[]).forEach(r=>html+='<tr><td>'+esc(r.id)+'<br>'+esc(r.name)+'</td><td>'+esc(r.assessment)+'</td><td>'+esc(r.score)+' / '+esc(r.max)+'</td></tr>');document.getElementById('list').innerHTML=html+'</table>'}
+function clearForm(){['tid','tname','tclass','tpin','task','tscore','tnote'].forEach(id=>document.getElementById(id).value='');tmax.value=20}
+function esc(x){return String(x==null?'':x).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+</script></body></html>
